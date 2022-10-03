@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { forkJoin, map, merge, mergeMap, Observable, of, partition, tap } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 // Create interface for employee data
-export interface Employee { id: number, title: string, name: string, reportsTo: number | null };
+export interface Employee { id: number, title: string, name: string, reportsTo: number | null, employees?: Employee[], employeeProfile?: EmployeeProfile };
 
 // Create interface for employeeProfile data
 export interface EmployeeProfile { id: number, employeeId: number, firstName: string, lastName: string, email: string, phone: string, address: string, city: string, state: string, zip: string };
@@ -22,10 +22,10 @@ export class AppService {
     { id: 1, title: 'Manager', name: 'John Smith', reportsTo: null },
     { id: 2, title: 'Manager', name: 'Jane Doe', reportsTo: 1 },
     { id: 3, title: 'Manager', name: 'John Doe', reportsTo: 2 },
-    { id: 4, title: 'Employee', name: 'Jane Smith', reportsTo: 3 },
-    { id: 5, title: 'Employee', name: 'Joe Smith', reportsTo: 3 },
+    { id: 4, title: 'Employee', name: 'Jane Smith', reportsTo: 2 },
+    { id: 5, title: 'Employee', name: 'Joe Smith', reportsTo: 2 },
     { id: 6, title: 'Employee', name: 'Joe Doe', reportsTo: 3 },
-    { id: 7, title: 'Manager', name: 'Jane Doe', reportsTo: 3 },
+    { id: 7, title: 'Manager', name: 'Jane Doe', reportsTo: 2 },
     { id: 8, title: 'Employee', name: 'John Smith', reportsTo: 7 },
     { id: 9, title: 'Employee', name: 'Jane Smith', reportsTo: 7 },
     { id: 10, title: 'Employee', name: 'Joe Smith', reportsTo: 7 },
@@ -86,14 +86,14 @@ export class AppService {
   // create a function called getEmployeeProfile that that takes an id as a parameter
   // and gets EmployeeProfile
   // getCrewProfile
-  getEmployeeProfileById(id: number): Observable<EmployeeProfile | undefined> {
-    return of(this.employeeProfiles.find(e => e.employeeId === id));
+  getEmployeeProfileById(id: number): Observable<EmployeeProfile> {
+    return of(this.employeeProfiles.find(e => e.employeeId === id) ?? {} as EmployeeProfile);
   }
 
   // Create a function called getEmployeeById that takes an id as a parameter
   // and returns observable of the employee object with the matching id
-  getEmployeeById(id: number): Observable<Employee | undefined> {
-    return of(this.employees.find(employee => employee.id === id));
+  getEmployeeById(id: number): Observable<Employee> {
+    return of(this.employees.find(employee => employee.id === id) ?? {} as Employee);
   }
 
   // Create a function called getEmployeesByManagerId that takes an id as a parameter

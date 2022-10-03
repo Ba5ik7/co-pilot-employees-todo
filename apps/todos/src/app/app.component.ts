@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { expand, flatMap, forkJoin, iif, map, merge, mergeMap, Observable, of, partition, switchMap, tap, toArray } from 'rxjs';
+import { combineLatest, expand, flatMap, forkJoin, from, iif, map, merge, mergeAll, mergeMap, Observable, of, partition, switchMap, tap, throwError, toArray } from 'rxjs';
 import { AppService, Employee, EmployeeProfile } from './app.service';
 
 @Component({
@@ -9,33 +9,14 @@ import { AppService, Employee, EmployeeProfile } from './app.service';
 })
 export class AppComponent implements OnInit {
   title = 'todos';
-
-  // employee!: Employee[];
-  // managers!: Employee[];
+  dataJson!: Observable<Employee>;
 
   constructor(private appService: AppService) {}
 
   ngOnInit() {
-    this.getRecursive(12).subscribe(console.log);
-    // this.appService.getEmployees().subscribe((employees) => {
-    //   console.log({ getEployees: employees });
-    //   this.employee = employees;
-    // });
+    this.dataJson = this.getEmployeeHierarchyRecursive(1);
 
-    // this.appService.getEmployeeById(1).subscribe((employee) => {
-    //   console.log({ getEmployeeById: employee });
-    // });
-
-    // this.appService.getEmployeesByManagerId(2).subscribe((employees) => {
-    //   console.log({ getEmployeesByManagerId: employees });
-    // });
-
-    // this.appService.getManagers().subscribe((managers) => {
-    //   console.log({ getManagers: managers });
-    //   this.managers = managers;
-    // });
-    
-    // // aggregate the employees by manager
+    // aggregate the employees by manager
     // this.appService.getManagers().subscribe((managers) => {
     //   managers.forEach((manager) => {
     //     this.appService.getEmployeesByManagerId(manager.id).subscribe((employees) => {
@@ -43,32 +24,37 @@ export class AppComponent implements OnInit {
     //     });
     //   });
     // });
-
-    // this.getManagerAggregateData().subscribe((data) => {
-    //   console.log({ managerAggregateData: data });
-    // });
-    // this.getEmployeeProfileAggregateData().subscribe((data) => {
-    //   console.log({ employeeProfileAggregateData: data });
-    // });
   }
 
-  getRecursive(employeeId: number): Observable<unknown> {
+  getEmployeeHierarchyRecursive(employeeId: number): Observable<Employee> {
     return this.appService.getEmployeeById(employeeId)
     .pipe(
-      mergeMap(employee => this.appService.getEmployeesByManagerId(employee?.id ?? 1)),
-      switchMap(employees =>
-        forkJoin(
-          employees.map(employee => {
-            return iif(() => employee?.title === 'Manager',
-            this.getRecursive(employee?.id ?? 1), 
-            of(employee))
-          })
-        )
+
+      mergeMap(employee => (
+        combineLatest({
+          employee: of(employee),
+          employeeProfile: this.appService.getEmployeeProfileById(employee.id),
+          employees: this.appService.getEmployeesByManagerId(employee.id)
+        })
+      )),
+
+      switchMap(({ employee, employeeProfile, employees }) =>
+        forkJoin([
+          of(employee),
+          of(employeeProfile),
+          ...employees.map(employee => this.getEmployeeHierarchyRecursive(employee.id))
+        ])
       ),
-      toArray()
+
+      tap(([employee, employeeProfile, ...employees]) => {
+        employee.employees = employees;
+        employee.employeeProfile = employeeProfile;
+      }),
+
+      map(([employee]) => employee)
     );
   }
-  
+
   // Create a function that returns aggregate data for each manager as an Observable
   // The aggregate data should include the manager's name and the number of employees they manage
   // The aggregate data should be returned as an array of objects
