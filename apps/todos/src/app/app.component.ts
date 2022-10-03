@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { combineLatest, expand, flatMap, forkJoin, from, iif, map, merge, mergeAll, mergeMap, Observable, of, partition, switchMap, tap, throwError, toArray } from 'rxjs';
-import { AppService, Employee, EmployeeProfile } from './app.service';
+import { combineLatest, forkJoin, map, mergeMap, Observable, of, switchMap, tap } from 'rxjs';
+import { AppService, Employee } from './app.service';
 
 @Component({
   selector: 'tmdjr-root',
@@ -38,7 +38,9 @@ export class AppComponent implements OnInit {
         })
       )),
 
-      // Recursive get employee hierarchy
+      // Persist the stream of employee in the `employee` property
+      // Persist the stream of employeeProfile in the `employeeProfile` property
+      // Recursively get employee hierarchy
       // Keep expanding the stream of employees until there are no more direct reports
       switchMap(({ employee, employeeProfile, employees }) =>
         forkJoin([
@@ -48,8 +50,8 @@ export class AppComponent implements OnInit {
         ])
       ),
       
-      // Set the direct reports of the employee
-      // Set the employee's profile
+      // Set the direct reports of the employee's `employees` property
+      // Set the employee's employeeProfile of the employee's `employeeProfile` property
       tap(([employee, employeeProfile, ...employees]) => {
         employee.employees = employees;
         employee.employeeProfile = employeeProfile;
