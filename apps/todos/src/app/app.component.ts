@@ -8,7 +8,7 @@ import { AppService, Employee, EmployeeProfile } from './app.service';
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements OnInit {
-  title = 'todos';
+  title = 'Employee Hierarchy';
   dataJson!: Observable<Employee>;
 
   constructor(private appService: AppService) {}
@@ -29,7 +29,7 @@ export class AppComponent implements OnInit {
   getEmployeeHierarchyRecursive(employeeId: number): Observable<Employee> {
     return this.appService.getEmployeeById(employeeId)
     .pipe(
-
+      // Merge stream of employee with stream of employee's profiles, and their direct reports
       mergeMap(employee => (
         combineLatest({
           employee: of(employee),
@@ -38,6 +38,8 @@ export class AppComponent implements OnInit {
         })
       )),
 
+      // Recursive get employee hierarchy
+      // Keep expanding the stream of employees until there are no more direct reports
       switchMap(({ employee, employeeProfile, employees }) =>
         forkJoin([
           of(employee),
@@ -45,12 +47,15 @@ export class AppComponent implements OnInit {
           ...employees.map(employee => this.getEmployeeHierarchyRecursive(employee.id))
         ])
       ),
-
+      
+      // Set the direct reports of the employee
+      // Set the employee's profile
       tap(([employee, employeeProfile, ...employees]) => {
         employee.employees = employees;
         employee.employeeProfile = employeeProfile;
       }),
 
+      // Map everything down to the employee
       map(([employee]) => employee)
     );
   }
