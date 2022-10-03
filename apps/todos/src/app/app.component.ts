@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { combineLatest, forkJoin, map, mergeMap, Observable, of, switchMap, tap } from 'rxjs';
+import { combineLatest, concatMap, expand, forkJoin, map, mergeMap, Observable, of, switchMap, tap } from 'rxjs';
 import { AppService, Employee } from './app.service';
 
 @Component({
@@ -9,12 +9,12 @@ import { AppService, Employee } from './app.service';
 })
 export class AppComponent implements OnInit {
   title = 'Employee Hierarchy';
-  dataJson!: Observable<Employee>;
+  dataJson$!: Observable<Employee>;
 
   constructor(private appService: AppService) {}
 
   ngOnInit() {
-    this.dataJson = this.getEmployeeHierarchyRecursive(1);
+    this.dataJson$ = this.getEmployeeHierarchyRecursive(1);
 
     // aggregate the employees by manager
     // this.appService.getManagers().subscribe((managers) => {
@@ -26,11 +26,15 @@ export class AppComponent implements OnInit {
     // });
   }
 
+  // https://indepth.dev/posts/1114/learn-to-combine-rxjs-sequences-with-super-intuitive-interactive-diagrams
   getEmployeeHierarchyRecursive(employeeId: number): Observable<Employee> {
     return this.appService.getEmployeeById(employeeId)
     .pipe(
       // Merge stream of employee with stream of employee's profiles, and their direct reports
-      mergeMap(employee => (
+      // https://indepth.dev/posts/1114/learn-to-combine-rxjs-sequences-with-super-intuitive-interactive-diagrams#concatall
+      concatMap(employee => (
+        // Combine all these streams into a single stream of objects
+        // https://indepth.dev/posts/1114/learn-to-combine-rxjs-sequences-with-super-intuitive-interactive-diagrams#combinelatest
         combineLatest({
           employee: of(employee),
           employeeProfile: this.appService.getEmployeeProfileById(employee.id),
@@ -38,11 +42,14 @@ export class AppComponent implements OnInit {
         })
       )),
 
-      // Persist the stream of employee in the `employee` property
-      // Persist the stream of employeeProfile in the `employeeProfile` property
-      // Recursively get employee hierarchy
-      // Keep expanding the stream of employees until there are no more direct reports
-      switchMap(({ employee, employeeProfile, employees }) =>
+      // Merge stream of employee with stream of employee's profiles, and their direct reports
+      // https://indepth.dev/posts/1114/learn-to-combine-rxjs-sequences-with-super-intuitive-interactive-diagrams#mergeall
+      mergeMap(({ employee, employeeProfile, employees }) =>
+        // Persist the stream of employee in the `employee` property
+        // Persist the stream of employeeProfile in the `employeeProfile` property
+        // Recursively get employee hierarchy
+        // Keep expanding the stream of employees until there are no more direct reports
+        // https://indepth.dev/posts/1114/learn-to-combine-rxjs-sequences-with-super-intuitive-interactive-diagrams#forkjoin
         forkJoin([
           of(employee),
           of(employeeProfile),
@@ -57,7 +64,7 @@ export class AppComponent implements OnInit {
         employee.employeeProfile = employeeProfile;
       }),
 
-      // Map everything down to the employee
+      // Map everything back down to the employee
       map(([employee]) => employee)
     );
   }
